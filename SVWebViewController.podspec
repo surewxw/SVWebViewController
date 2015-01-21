@@ -10,4 +10,5 @@ Pod::Spec.new do |s|
   s.source_files 	= 'SVWebViewController/**/*.{h,m}'
   s.resources 		= 'SVWebViewController/**/*.{bundle,png,lproj}'
   s.requires_arc 	= true
+  s.frameworks		= 'WebKit'
 end
