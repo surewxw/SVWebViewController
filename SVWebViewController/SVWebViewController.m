@@ -20,7 +20,6 @@
 @property (nonatomic, strong) UIBarButtonItem *stopBarButtonItem;
 @property (nonatomic, strong) UIBarButtonItem *actionBarButtonItem;
 
-@property (nonatomic, strong) UIWebView *webView;
 @property (nonatomic, strong) WKWebView* wkWebView; // Will use a WebKit WebView if available (iOS8+)
 
 @property (nonatomic, strong) NSURLRequest *request;
@@ -34,18 +33,10 @@
 
 - (void)dealloc
 {
-	if (self.wkWebView)
-	{
-		[self.wkWebView stopLoading];
-		self.wkWebView = nil;
-	}
-	else
-	{
-		[self.webView stopLoading];
-		self.webView.delegate = nil;
-		self.delegate = nil;
-	}
-	[[UIApplication sharedApplication] setNetworkActivityIndicatorVisible:NO];
+    [self.wkWebView stopLoading];
+    self.wkWebView = nil;
+    
+    [[UIApplication sharedApplication] setNetworkActivityIndicatorVisible:NO];
 }
 
 - (instancetype)initWithAddress:(NSString *)urlString {
@@ -66,21 +57,14 @@
 
 - (void)loadRequest:(NSURLRequest*)request
 {
-	if (self.wkWebView)
-	{
-		[self.wkWebView loadRequest:request];
-	}
-	else
-	{
-		[self.webView loadRequest:request];
-	}
+    [self.wkWebView loadRequest:request];
 }
 
 #pragma mark - View lifecycle
 
 - (void)loadView
 {
-	self.view = self.wkWebView ?: self.webView;
+    self.view = self.wkWebView;
     [self loadRequest:self.request];
 }
 
@@ -92,10 +76,9 @@
 - (void)viewDidUnload
 {
     [super viewDidUnload];
-
-	self.webView = nil;
-	self.wkWebView = nil;
-	
+    
+    self.wkWebView = nil;
+    
     _backBarButtonItem = nil;
     _forwardBarButtonItem = nil;
     _refreshBarButtonItem = nil;
@@ -138,27 +121,18 @@
 
 #pragma mark - Getters
 
-- (UIWebView*)webView {
-    if(!_webView) {
-        _webView = [[UIWebView alloc] initWithFrame:[UIScreen mainScreen].bounds];
-        _webView.delegate = self;
-        _webView.scalesPageToFit = YES;
-    }
-    return _webView;
-}
-
 - (WKWebView*)wkWebView
 {
-	if (!_wkWebView)
-	{
-		if ([WKWebView class])
-		{
-			_wkWebView = [[WKWebView alloc] initWithFrame:[UIScreen mainScreen].bounds];
-			_wkWebView.navigationDelegate = self;
-		}
-	}
-	
-	return _wkWebView;
+    if (!_wkWebView)
+    {
+        if ([WKWebView class])
+        {
+            _wkWebView = [[WKWebView alloc] initWithFrame:[UIScreen mainScreen].bounds];
+            _wkWebView.navigationDelegate = self;
+        }
+    }
+    
+    return _wkWebView;
 }
 
 - (UIBarButtonItem *)backBarButtonItem {
@@ -208,14 +182,14 @@
 
 - (void)updateToolbarItems
 {
-	self.backBarButtonItem.enabled = self.wkWebView ? self.wkWebView.canGoBack : self.webView.canGoBack;
-	self.forwardBarButtonItem.enabled = self.wkWebView ? self.wkWebView.canGoForward : self.webView.canGoForward;
-	
-	BOOL isLoading = self.wkWebView ? self.wkWebView.isLoading : self.webView.isLoading;
-	self.actionBarButtonItem.enabled = !isLoading;
-	
-	UIBarButtonItem *refreshStopBarButtonItem = isLoading ? self.stopBarButtonItem : self.refreshBarButtonItem;
-	
+    self.backBarButtonItem.enabled = self.wkWebView.canGoBack;
+    self.forwardBarButtonItem.enabled = self.wkWebView.canGoForward;
+    
+    BOOL isLoading = self.wkWebView.isLoading;
+    self.actionBarButtonItem.enabled = !isLoading;
+    
+    UIBarButtonItem *refreshStopBarButtonItem = isLoading ? self.stopBarButtonItem : self.refreshBarButtonItem;
+    
     UIBarButtonItem *fixedSpace = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemFixedSpace target:nil action:nil];
     UIBarButtonItem *flexibleSpace = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemFlexibleSpace target:nil action:nil];
     
@@ -260,110 +234,55 @@
     }
 }
 
-#pragma mark - UIWebViewDelegate
-
-- (void)webViewDidStartLoad:(UIWebView *)webView {
-    [[UIApplication sharedApplication] setNetworkActivityIndicatorVisible:YES];
-    [self updateToolbarItems];
-    
-    if ([self.delegate respondsToSelector:@selector(webViewDidStartLoad:)]) {
-        [self.delegate webViewDidStartLoad:webView];
-    }
-}
-
-
-- (void)webViewDidFinishLoad:(UIWebView *)webView {
-    [[UIApplication sharedApplication] setNetworkActivityIndicatorVisible:NO];
-    
-    if (self.navigationItem.title == nil) {
-        self.navigationItem.title = [webView stringByEvaluatingJavaScriptFromString:@"document.title"];
-    }
-    
-    [self updateToolbarItems];
-    
-    if ([self.delegate respondsToSelector:@selector(webViewDidFinishLoad:)]) {
-        [self.delegate webViewDidFinishLoad:webView];
-    }
-}
-
-- (void)webView:(UIWebView *)webView didFailLoadWithError:(NSError *)error {
-    [[UIApplication sharedApplication] setNetworkActivityIndicatorVisible:NO];
-    [self updateToolbarItems];
-    
-    if ([self.delegate respondsToSelector:@selector(webView:didFailLoadWithError:)]) {
-        [self.delegate webView:webView didFailLoadWithError:error];
-    }
-}
-
-- (BOOL)webView:(UIWebView *)webView shouldStartLoadWithRequest:(NSURLRequest *)request navigationType:(UIWebViewNavigationType)navigationType {
-    if ([self.delegate respondsToSelector:@selector(webView:shouldStartLoadWithRequest:navigationType:)]) {
-        return [self.delegate webView:webView shouldStartLoadWithRequest:request navigationType:navigationType];
-    }
-    
-    return YES;
-}
-
 #pragma mark - WKNavigationDelegate
 - (void)webView:(WKWebView *)webView didCommitNavigation:(WKNavigation *)navigation
 {
-	[[UIApplication sharedApplication] setNetworkActivityIndicatorVisible:YES];
-	[self updateToolbarItems];
+    [[UIApplication sharedApplication] setNetworkActivityIndicatorVisible:YES];
+    [self updateToolbarItems];
 }
 
 - (void)webView:(WKWebView *)webView didFinishNavigation:(WKNavigation *)navigation
 {
-	[[UIApplication sharedApplication] setNetworkActivityIndicatorVisible:NO];
-	
-	self.navigationItem.title = webView.title;
-	[self updateToolbarItems];
+    [[UIApplication sharedApplication] setNetworkActivityIndicatorVisible:NO];
+    
+    self.navigationItem.title = webView.title;
+    [self updateToolbarItems];
 }
 
 - (void)webView:(WKWebView *)webView didFailNavigation:(WKNavigation *)navigation withError:(NSError *)error
 {
-	[[UIApplication sharedApplication] setNetworkActivityIndicatorVisible:NO];
-	[self updateToolbarItems];
+    [[UIApplication sharedApplication] setNetworkActivityIndicatorVisible:NO];
+    [self updateToolbarItems];
 }
 
 #pragma mark - Target actions
 
 - (void)goBackTapped:(UIBarButtonItem *)sender
 {
-	if (self.wkWebView)
-		[self.wkWebView goBack];
-	else
-		[self.webView goBack];
+    [self.wkWebView goBack];
 }
 
 - (void)goForwardTapped:(UIBarButtonItem *)sender
 {
-	if (self.wkWebView)
-		[self.wkWebView goForward];
-	else
-		[self.webView goForward];
+    [self.wkWebView goForward];
 }
 
 - (void)reloadTapped:(UIBarButtonItem *)sender
 {
-	if (self.wkWebView)
-		[self.wkWebView reload];
-	else
-		[self.webView reload];
+    [self.wkWebView reload];
 }
 
 - (void)stopTapped:(UIBarButtonItem *)sender
 {
-	if (self.wkWebView)
-		[self.wkWebView stopLoading];
-	else
-		[self.webView stopLoading];
-	
+    [self.wkWebView stopLoading];
+    
     [self updateToolbarItems];
 }
 
 - (void)actionButtonTapped:(id)sender
 {
-	// Can't see the request URL in the wkWebView and this code will fall down to self.request.URL for iOS8 so should be ok
-	NSURL *url = self.webView.request.URL ? self.webView.request.URL : self.request.URL;
+    // Can't see the request URL in the wkWebView and this code will fall down to self.request.URL for iOS8 so should be ok
+    NSURL *url = self.request.URL;
     if (url != nil) {
         NSArray *activities = @[[SVWebViewControllerActivitySafari new], [SVWebViewControllerActivityChrome new]];
         
